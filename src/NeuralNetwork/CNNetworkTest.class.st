@@ -124,7 +124,7 @@ CNNetworkTest >> testBeforeLastLayerComputationOfDelta [
 
 { #category : #tests }
 CNNetworkTest >> testFeed [
-	"To test the feeding of a CNN with four layers. CONV - POOL - CONV - FULLY."
+	"To test the feeding of a CNN with four layers. CONV - POOL - CONV - FLATTEN - FULLY."
 
 	| cube net res1 res2 res3 res4 res5 |
 	cube := self constructCuboid.

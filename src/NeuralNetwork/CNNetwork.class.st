@@ -30,9 +30,58 @@ Class {
 }
 
 { #category : #'as yet unclassified' }
+CNNetwork class >> exampleWithLeNet1 [
+	| net fileBase reader reader2 matrix matrix2 datas labels data3D r cl1 pl1 pl2 cl2 fl nl |
+	fileBase := '/home/vanor/Bureau/datasets/mnist/'.
+	reader := IdxReader
+		onStream: (File named: fileBase , 'train-images-idx3-ubyte') readStream.
+	reader2 := IdxReader
+		onStream: (File named: fileBase , 'train-labels-idx1-ubyte') readStream.
+	matrix := reader next.
+	matrix2 := reader2 next.
+	datas := matrix first: 50.
+	labels := matrix2 first: 50.
+	data3D := datas
+		collect: [ :row | row collect: [ :c | c collect: [ :e | {e} ] ] ].
+	r := Random seed: 42.
+	cl1 := CNeuronLayer new
+		initializeForNbOfFeatures: 4
+		withWidth: 5
+		height: 5
+		depth: 1
+		andOutputSize: 24.
+	cl1 stride: 1.
+	pl1 := PoolingLayer new
+		withPoolingUnitClass: MaxPoolingUnit;
+		initializeForReceptiveFieldSize: 2 withStride: 2.
+	cl2 := CNeuronLayer new
+		initializeForNbOfFeatures: 8
+		withWidth: 5
+		height: 5
+		depth: 4
+		andOutputSize: 8.
+	cl2 stride: 1.
+	pl2 := PoolingLayer new
+		withPoolingUnitClass: MaxPoolingUnit;
+		initializeForReceptiveFieldSize: 2 withStride: 2.
+	fl := FlattenLayer new.
+	nl := NeuronLayer new.
+	nl initializeNbOfNeurons: 10 nbOfWeights: 16 using: r.
+	net := CNNetwork new.
+	net
+		addLayer: cl1;
+		addLayer: pl1;
+		addLayer: cl2;
+		addLayer: pl2;
+		addLayer: fl;
+		addLayer: nl.
+	net train: data3D withLabels: labels andNbEpoch: 20
+]
+
+{ #category : #'as yet unclassified' }
 CNNetwork class >> exampleWithMNIST [
 	| net fileBase reader reader2 matrix matrix2 datas labels data3D r cl1 pl1 cl2 nl |
-	fileBase := 'C:\Users\vanor\Desktop\cle_yvan\NewAge\datasets\mnist\'.
+	fileBase := '/home/vanor/Bureau/datasets/mnist/'.
 	reader := IdxReader
 		onStream: (File named: fileBase , 'train-images-idx3-ubyte') readStream.
 	reader2 := IdxReader

@@ -45,7 +45,23 @@ Class {
 PoolingLayer >> backwardAssignError [
 	"To assign the deltas to the previous layer which is a CNeuronLayer. The next layer is a FlattenLayer."
 
-	self computeDelta.
+	| maxIndexesCuboid nextLayerDeltas width height depth |
+	nextLayerDeltas := self nextLayer deltas.
+	maxIndexesCuboid := units collect: [ :row | row collect: #indexesArray ].
+	width := self previousLayer neurons size.
+	height := self previousLayer neurons anyOne size.
+	depth := self previousLayer neurons anyOne anyOne size.
+	deltaCuboid := (1 to: width) collect: [ :r |
+							(1 to: height) collect: [ :c |
+								(1 to: depth) collect: [ :p | 0 ]]].
+	
+	maxIndexesCuboid doWithIndex: [ :row :i |
+		row doWithIndex: [ :col :j |
+			col doWithIndex: [ :maxCoordinates :k |
+				| rowIndex columnIndex |
+				rowIndex := (stride * (i - 1) + (maxCoordinates first)).
+				columnIndex := (stride * (j - 1) + (maxCoordinates second)).
+				((deltaCuboid at: rowIndex) at: columnIndex) at: k put: (((nextLayerDeltas at: i) at: j) at: k) ]]].
 
 	self previousLayer notNil ifTrue: [ self previousLayer backwardAssignError ].
 ]
@@ -61,25 +77,38 @@ PoolingLayer >> backwardPropagateError [
 
 { #category : #initialization }
 PoolingLayer >> computeDelta [
-	"The next layer is not a fully connected layer."
+	"The next layer is a CONV layer."
 	
-	| nextLayerDeltas maxIndexesCuboid width height depth |
+	| nextLayerDeltas nextLayerFeaturesWidth nextLayerFeaturesHeight width height depth result nStride pStride pFeatWidth pFeatHeight  |
 	nextLayerDeltas := self nextLayer deltas.
-	maxIndexesCuboid := units collect: [ :row | row collect: #indexesArray ].
-	width := self previousLayer neurons size.
-	height := self previousLayer neurons anyOne size.
-	depth := self previousLayer neurons anyOne anyOne size.
-	deltaCuboid := (1 to: width) collect: [ :i |
-							(1 to: height) collect: [ :j |
-								(1 to: depth) collect: [ :k | 0 ] ] ].
-						
-	maxIndexesCuboid doWithIndex: [ :row :i |
-		row doWithIndex: [ :col :j |
-			col doWithIndex: [ :maxCoordinates :k |
-				| rowIndex columnIndex |
-				rowIndex := (stride * (i - 1) + (maxCoordinates first)).
-				columnIndex := (stride * (j - 1) + (maxCoordinates second)).
-				(((deltaCuboid at: rowIndex) at: columnIndex) at: k) put: (((nextLayerDeltas at: i) at: j) at: k) ]]].
+	nextLayerFeaturesWidth := self nextLayer features anyOne characteristics size.
+	nextLayerFeaturesHeight := self nextLayer features anyOne characteristics anyOne size.
+	width := units size.
+	height := units anyOne size.
+	depth := units anyOne anyOne outputArray size.
+	nStride := self nextLayer stride.
+	pStride := self previousLayer stride.
+	pFeatWidth := self previousLayer features anyOne characteristics size.
+	pFeatHeight := self previousLayer features anyOne characteristics anyOne size.
+	
+	deltaCuboid := (1 to: width) collect: [ :n |
+							(1 to: height) collect: [ :p |
+								(1 to: depth) collect: [ :m |
+									result := 0.0.
+									nextLayerDeltas doWithIndex: [ :nextLayerRow :j |
+										1 to: nextLayerFeaturesWidth do: [ :b |
+											nextLayerRow doWithIndex: [ :nextLayerColumn :k |
+												1 to: nextLayerFeaturesHeight do: [ :c |
+													nextLayerColumn doWithIndex: [ :delta :i |
+														| cond1 cond2 cond3 |
+														cond1 := (nStride * (j - 1) + b = n) and: (nStride * (k - 1) + c = p).
+														cond2 := ((n - pFeatWidth) / pStride + 1 <= j) and: ((n - 1) / pStride + 1 >= j).
+														cond3 := ((p - pFeatHeight) / pStride + 1 <= k) and: ((p - 1) / pStride + 1 >= k).
+														(cond1 and: (cond2 and: cond3)) ifTrue: [ 
+															result := result +
+																(delta * ((((self nextLayer features) at: i) characteristics at: b) at: c) at: m). ]
+														]]]]].
+									result ] ] ]
 ]
 
 { #category : #initialization }

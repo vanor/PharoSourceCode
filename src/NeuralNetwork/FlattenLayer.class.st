@@ -96,3 +96,10 @@ FlattenLayer >> stride [
 
 	^ 1
 ]
+
+{ #category : #initialization }
+FlattenLayer >> updateWeights [
+	"No weights to be updated. Just pass to the next layer."
+	
+	self nextLayer ifNotNil: [ self nextLayer updateWeights ]
+]
